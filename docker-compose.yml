@@ -14,12 +14,15 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-coldstore}
       MYSQL_USER: ${MYSQL_USER:-app}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Chua khai bao MYSQL_PASSWORD trong .env}
+      MYSQL_MIGRATION_USER: ${MYSQL_MIGRATION_USER:?Chua khai bao MYSQL_MIGRATION_USER trong .env}
+      MYSQL_MIGRATION_PASSWORD: ${MYSQL_MIGRATION_PASSWORD:?Chua khai bao MYSQL_MIGRATION_PASSWORD trong .env}
       TZ: UTC
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
       - --default-time-zone=+00:00
       - --skip-name-resolve
+      - --log-bin-trust-function-creators=1
     ports:
       - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
@@ -32,5 +35,21 @@ services:
       retries: 30
       start_period: 20s
 
+  flyway:
+    image: flyway/flyway:11.13.3          # cần bản >= 11.13.3 để hỗ trợ MySQL 8.4
+    container_name: dadn-flyway
+    profiles: ["tools"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./database/migration:/flyway/sql:ro
+    environment:
+      FLYWAY_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?allowPublicKeyRetrieval=true
+      FLYWAY_USER: ${MYSQL_MIGRATION_USER:?Chua khai bao MYSQL_MIGRATION_USER trong .env}
+      FLYWAY_PASSWORD: ${MYSQL_MIGRATION_PASSWORD:?Chua khai bao MYSQL_MIGRATION_PASSWORD trong .env}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      FLYWAY_CONNECT_RETRIES: 10     # chờ MySQL chạy xong script init
 volumes:
   mysql_data:
+

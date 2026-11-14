@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+mysql --protocol=socket -uroot -p"${MYSQL_ROOT_PASSWORD}" <<EOSQL
+-- Tài khoản migration: toàn quyền trên CSDL chính và CSDL test, chỉ Flyway dùng
+CREATE USER IF NOT EXISTS '${MYSQL_MIGRATION_USER}'@'%' IDENTIFIED BY '${MYSQL_MIGRATION_PASSWORD}';
+GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.*      TO '${MYSQL_MIGRATION_USER}'@'%';
+GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}_test\`.* TO '${MYSQL_MIGRATION_USER}'@'%';
+
+-- Tài khoản ứng dụng chỉ thao tác dữ liệu
+REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${MYSQL_USER}'@'%';
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON \`${MYSQL_DATABASE}\`.*      TO '${MYSQL_USER}'@'%';
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON \`${MYSQL_DATABASE}_test\`.* TO '${MYSQL_USER}'@'%';
+EOSQL
