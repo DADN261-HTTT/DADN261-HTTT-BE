@@ -27,3 +27,5 @@ dist/
 # Hệ điều hành
 .DS_Store
 Thumbs.db
+
+**/secrets.h

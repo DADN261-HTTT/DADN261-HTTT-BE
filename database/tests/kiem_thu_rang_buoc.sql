@@ -1,8 +1,8 @@
 -- =====================================================================
--- KIỂM THỬ RÀNG BUỘC (CHECK, UNIQUE, KHÓA NGOẠI, TRIGGER) CỦA V1–V3
+-- KIỂM THỬ RÀNG BUỘC (CHECK, UNIQUE, KHÓA NGOẠI, TRIGGER) CỦA V1–V4
 --
 -- Chạy trên CSDL DADN261_test bằng tài khoản dadn_migration
--- (cần quyền tạo thủ tục và bảng tạm). CSDL phải đã migrate tới V3.
+-- (cần quyền tạo thủ tục và bảng tạm). CSDL phải đã migrate tới V4.
 --
 -- Cách hoạt động:
 --   - Hai thủ tục tạm kt_chay / kt_kiem_tra chạy từng câu lệnh, bắt lỗi và
@@ -292,6 +292,20 @@ CALL kt_chay('T61', 'RB05', 'Phòng kho thuộc nhà kho không tồn tại', 14
     "INSERT INTO PhongKho (ma_nguoi_quan_ly, ma_nha_kho) VALUES (@ql1, 999999999)");
 CALL kt_chay('T62', 'FK', 'Thiết bị thuộc phòng kho không tồn tại', 1452,
     "INSERT INTO ThietBiIot (ma_phan_loai, feed_key, ma_phong_kho) VALUES (1, 'kt-khong-phong', 999999999)");
+
+-- =====================================================================
+-- 8. V4: danh mục áp suất và chống trùng bản ghi cảm biến
+-- =====================================================================
+CALL kt_kiem_tra('T63', 'V4', 'Có loại thiết bị Cảm biến áp suất, đơn vị hPa',
+    "(SELECT don_vi_do FROM PhanLoaiThietBi WHERE ma_phan_loai_thiet_bi = 5) = 'hPa'");
+CALL kt_chay('T64', 'RB29', 'Ghi bản ghi cảm biến', 0,
+    "INSERT INTO BangGhiDuLieu (ma_thiet_bi, thoi_gian_ghi, gia_tri_thong_so) VALUES (@tb_cb, @t0, -19.6)");
+CALL kt_chay('T65', 'RB29', 'Ghi trùng (thiết bị, thời gian) khi đọc bù bị chặn', 1062,
+    "INSERT INTO BangGhiDuLieu (ma_thiet_bi, thoi_gian_ghi, gia_tri_thong_so) VALUES (@tb_cb, @t0, -19.6)");
+CALL kt_chay('T66', 'RB29', 'INSERT IGNORE với bản ghi trùng không báo lỗi', 0,
+    "INSERT IGNORE INTO BangGhiDuLieu (ma_thiet_bi, thoi_gian_ghi, gia_tri_thong_so) VALUES (@tb_cb, @t0, -19.6)");
+CALL kt_kiem_tra('T67', 'RB29', 'Sau INSERT IGNORE vẫn chỉ có 1 bản ghi',
+    "(SELECT COUNT(*) FROM BangGhiDuLieu WHERE ma_thiet_bi = @tb_cb AND thoi_gian_ghi = @t0) = 1");
 
 -- =====================================================================
 -- HOÀN TÁC DỮ LIỆU THỬ, DỌN DẸP VÀ XEM KẾT QUẢ
