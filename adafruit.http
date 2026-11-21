@@ -1,0 +1,135 @@
+# =====================================================================
+# ADAFRUIT IO – BỘ YÊU CẦU REST API ĐÃ LƯU
+# Dùng với extension "REST Client" (humao.rest-client) của VS Code:
+# bấm "Send Request" phía trên mỗi yêu cầu.
+#
+# Username và AIO Key đọc từ file .env CÙNG THƯ MỤC với file này
+# (AIO_USERNAME, AIO_KEY). File này không chứa bí mật nên được commit.
+#
+# Lưu ý: mỗi lần tạo dữ liệu (POST) tính vào giới hạn 30 điểm/phút
+# của CẢ tài khoản; không bấm gửi liên tục.
+# Thời gian dùng ISO 8601 theo UTC (đuôi Z). Giờ Việt Nam = UTC + 7.
+# =====================================================================
+
+@user = {{$dotenv AIO_USERNAME}}
+@key  = {{$dotenv AIO_KEY}}
+@base = https://io.adafruit.com/api/v2/{{user}}
+
+
+# =====================================================================
+# A. FIRMWARE → ADAFRUIT IO
+#    Đường chính của firmware là MQTT; REST dùng khi gửi bù kèm thời điểm
+#    đo gốc, khi lấy lại lệnh cuối lúc khởi động, hoặc để thử nghiệm.
+# =====================================================================
+
+### A1. Gửi nhiệt độ (giá trị số, dấu chấm thập phân, không kèm đơn vị)
+POST {{base}}/feeds/a1-nhiet-do/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "-19.6" }
+
+### A2. Gửi độ ẩm
+POST {{base}}/feeds/a1-do-am/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "91.2" }
+
+### A3. Gửi áp suất
+POST {{base}}/feeds/a1-ap-suat/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "1008.3" }
+
+### A4. Gửi bù một điểm kèm thời điểm đo gốc (created_at chỉ được ở quá khứ)
+POST {{base}}/feeds/a1-nhiet-do/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "-19.4", "created_at": "2026-11-21T09:00:00Z" }
+
+### A5. Gửi bù nhiều điểm một lần (mỗi điểm vẫn tính vào giới hạn 30 điểm/phút)
+POST {{base}}/feeds/a1-nhiet-do/data/batch
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{
+  "data": [
+    { "value": "-19.5", "created_at": "2026-11-21T09:00:30Z" },
+    { "value": "-19.3", "created_at": "2026-11-21T09:01:00Z" }
+  ]
+}
+
+### A6. Phản hồi sau khi thực hiện lệnh: feed|giá trị|kết quả (THANH_CONG / THAT_BAI)
+POST {{base}}/feeds/phan-hoi/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "a1-quat|1|THANH_CONG" }
+
+### A7. Trạng thái bo mạch: MAC|pin %|RSSI|thời gian chạy (giây)
+POST {{base}}/feeds/trang-thai/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "A4:CF:12:3B:5E:01|78|-61|3600" }
+
+### A8. Lấy lệnh cuối cùng của quạt khi khởi động (trả về giá trị thuần, ví dụ 1)
+GET {{base}}/feeds/a1-quat/data/last_value
+X-AIO-Key: {{key}}
+
+### A9. Lấy trạng thái cảnh báo cuối cùng khi khởi động
+GET {{base}}/feeds/canh-bao/data/last_value
+X-AIO-Key: {{key}}
+
+
+# =====================================================================
+# B. BACKEND ↔ ADAFRUIT IO (để thử trước khi viết mã backend)
+# =====================================================================
+
+### B1. Danh sách feed (kiểm tra key và history)
+GET {{base}}/feeds
+X-AIO-Key: {{key}}
+
+### B2. Gửi lệnh bật quạt (relay: 1/0; MOSFET: 0–100)
+POST {{base}}/feeds/a1-quat/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "1" }
+
+### B3. Gửi lệnh tắt quạt
+POST {{base}}/feeds/a1-quat/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "0" }
+
+### B4. Bật LED và còi cảnh báo
+POST {{base}}/feeds/canh-bao/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "1" }
+
+### B5. Tắt LED và còi cảnh báo
+POST {{base}}/feeds/canh-bao/data
+X-AIO-Key: {{key}}
+Content-Type: application/json
+
+{ "value": "0" }
+
+### B6. Đọc bù: các điểm từ một mốc thời gian (tối đa 1000 điểm/lần;
+###     trang tiếp theo nằm trong header Link của phản hồi)
+GET {{base}}/feeds/a1-nhiet-do/data?start_time=2026-11-21T00:00:00Z&limit=1000&include=id,value,created_at
+X-AIO-Key: {{key}}
+
+### B7. 5 điểm gần nhất
+GET {{base}}/feeds/a1-nhiet-do/data?limit=5&include=id,value,created_at
+X-AIO-Key: {{key}}
+
+### B8. Điểm cuối cùng (đầy đủ thông tin)
+GET {{base}}/feeds/a1-nhiet-do/data/last
+X-AIO-Key: {{key}}
