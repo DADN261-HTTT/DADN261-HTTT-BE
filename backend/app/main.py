@@ -4,17 +4,27 @@ Chạy ở thư mục backend/:  uvicorn app.main:app --reload
 Tài liệu API:             http://127.0.0.1:8000/docs
 """
 
-from backend.app import storage_rooms
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth
+from app import auth, storage_rooms
 from app.configuration import config
 from app.database import get_session
+from app.iot_gateway import iot_gateway
 
-app = FastAPI(title="DADN261 – Backend kho lạnh IoT")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await iot_gateway.start()
+    try:
+        yield
+    finally:
+        await iot_gateway.stop()
+
+app = FastAPI(title="DADN261 – Backend kho lạnh IoT", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
