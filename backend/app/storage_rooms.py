@@ -1,6 +1,6 @@
 """Task 19: storage room list and room dashboard."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import bindparam, text
@@ -15,8 +15,7 @@ router = APIRouter(prefix="/api", tags=["Storage rooms"])
 def to_json_row(row) -> dict:
     """Convert a result row to a dict; DATETIME values (stored as UTC) get an explicit UTC timezone."""
     return {
-        key: value.replace(tzinfo=timezone.utc) if isinstance(value, datetime) else value
-        for key, value in row.items()
+        key: value.replace(tzinfo=UTC) if isinstance(value, datetime) else value for key, value in row.items()
     }
 
 

@@ -1,4 +1,5 @@
 """Kết nối MySQL. Cấu trúc bảng do Flyway quản lý; backend chỉ đọc và ghi dữ liệu."""
+
 from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 

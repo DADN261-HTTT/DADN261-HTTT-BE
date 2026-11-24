@@ -8,7 +8,7 @@
 -- =====================================================================
 
 SET NAMES utf8mb4;
-SET @t0      = NOW(3);
+SET @t0      = NOW();
 SET @mat_khau = '$2b$10$pe8BftNRcGDu0KPzR6JhquYW5NicmHvNWXLaVxpm4OdaL85gswfDK';
 
 START TRANSACTION;
