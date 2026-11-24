@@ -45,7 +45,7 @@ async def get_room_ids(session: AsyncSession, user: dict) -> list[int]:
     return sorted(result.scalars().all())
 
 
-@router.get("/user/me", tags=["User"])
+@router.get("/users/me", tags=["User"])
 async def get_me(
     user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),

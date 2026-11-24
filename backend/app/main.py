@@ -11,18 +11,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth, storage_rooms
+from app import auth, realtime, storage_rooms
 from app.configuration import config
 from app.database import get_session
 from app.iot_gateway import iot_gateway
 
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await iot_gateway.start()
-    try:
-        yield
-    finally:
-        await iot_gateway.stop()
+    await iot_gateway.start()  # bắt đầu nghe Adafruit IO khi backend khởi động
+    yield
+    await iot_gateway.stop()  # dừng gọn khi tắt backend
+
 
 app = FastAPI(title="DADN261 – Backend kho lạnh IoT", lifespan=lifespan)
 
@@ -36,6 +36,8 @@ app.add_middleware(
 # Gắn các nhóm API
 app.include_router(auth.router)
 app.include_router(storage_rooms.router)
+app.include_router(realtime.router)
+
 
 @app.get("/api/health", tags=["System"])
 async def suc_khoe(session: AsyncSession = Depends(get_session)):

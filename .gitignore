@@ -5,6 +5,7 @@
 .idea/
 *.iml
 .vscode/*
+!.vscode/launch.json
 !.vscode/extensions.json
 
 # Java
