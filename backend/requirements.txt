@@ -6,3 +6,4 @@ cryptography>=42
 pydantic>=2.7
 pydantic-settings>=2.3
 tzdata>=2024.1
+aiomqtt

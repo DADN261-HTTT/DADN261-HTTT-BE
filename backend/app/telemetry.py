@@ -1,5 +1,6 @@
 """Thu nhận, lưu dữ liệu cảm biến chống trùng (RB29) và phát sự kiện dữ liệu mới."""
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import text
@@ -11,12 +12,10 @@ from app.event_bus import event_bus
 
 def parse_utc_timestamp(created_at: str) -> datetime:
     """Chuyển chuỗi ISO timestamp (ví dụ từ Adafruit IO created_at) về UTC datetime (độ phân giải ms)."""
-    dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+    dt = datetime.fromisoformat(created_at)
     if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-    # Làm tròn về mili-giây để khớp kiểu datetime(3) trong MySQL
-    microsecond_ms = (dt.microsecond // 1000) * 1000
-    return dt.replace(microsecond=microsecond_ms)
+        dt = dt.astimezone(UTC).replace(tzinfo=None)
+    return dt.replace(microsecond=0)
 
 
 async def get_sensor_feeds(session: AsyncSession) -> list[dict[str, Any]]:
@@ -24,9 +23,9 @@ async def get_sensor_feeds(session: AsyncSession) -> list[dict[str, Any]]:
     result = await session.execute(
         text(
             """
-            SELECT ma_thiet_bi, feed_key
-            FROM ThietBiIot
-            WHERE feed_key IS NOT NULL AND feed_key != ''
+            SELECT tb.ma_thiet_bi, tb.feed_key
+            FROM ThietBiIot tb JOIN PhanLoaiThietBi pl on pl.ma_phan_loai_thiet_bi =tb.ma_phan_loai
+            WHERE tb.feed_key IS NOT NULL AND tb.feed_key <> '' AND pl.don_vi_do is not NULL  AND tb.trang_thai_hoat_dong <> 'NGUNG_SU_DUNG'
             """
         )
     )
@@ -59,23 +58,31 @@ async def save_telemetry_point(
     gia_tri_thong_so = float(raw_value)
     thoi_gian_ghi = parse_utc_timestamp(created_at_iso)
 
-    async with SessionLocal() as session:
-        async with session.begin():
-            res = await session.execute(
-                text(
-                    """
+    async with SessionLocal() as session, session.begin():
+        res = await session.execute(
+            text(
+                """
                     INSERT IGNORE INTO BangGhiDuLieu (ma_thiet_bi, thoi_gian_ghi, gia_tri_thong_so)
-                    VALUES (:ma_thiet_bi, :thoi_gian_ghi, :gia_tri_thong_so)
+                    VALUES (:ma_thiet_bi, :thoi_gian_ghi, :gia_tri_thong_so);
                     """
-                ),
-                {
-                    "ma_thiet_bi": ma_thiet_bi,
-                    "thoi_gian_ghi": thoi_gian_ghi,
-                    "gia_tri_thong_so": gia_tri_thong_so,
-                },
-            )
-            inserted = (res.rowcount or 0) > 0
+            ),
+            {
+                "ma_thiet_bi": ma_thiet_bi,
+                "thoi_gian_ghi": thoi_gian_ghi,
+                "gia_tri_thong_so": gia_tri_thong_so,
+            },
+        )
+        inserted = (res.rowcount or 0) > 0
 
+        await session.execute(
+            text("""
+                    UPDATE ThietBiIot
+                    SET thoi_gian_hoat_dong_lan_cuoi = GREATEST(COALESCE(thoi_gian_hoat_dong_lan_cuoi, :t), :t),
+                        trang_thai_hoat_dong = 'HOAT_DONG'
+                    WHERE ma_thiet_bi = :id AND trang_thai_hoat_dong <> 'NGUNG_SU_DUNG'
+                """),
+            {"t": thoi_gian_ghi, "id": ma_thiet_bi},
+        )
     if inserted:
         await event_bus.publish(
             "telemetry.created",
@@ -83,7 +90,7 @@ async def save_telemetry_point(
                 "ma_thiet_bi": ma_thiet_bi,
                 "feed_key": feed_key,
                 "gia_tri_thong_so": gia_tri_thong_so,
-                "thoi_gian_ghi": thoi_gian_ghi.isoformat(timespec="milliseconds") + "Z",
+                "thoi_gian_ghi": thoi_gian_ghi.replace(tzinfo=UTC).isoformat(),
             },
         )
     return inserted
