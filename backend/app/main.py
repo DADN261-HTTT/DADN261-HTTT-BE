@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth, realtime, storage_rooms
+from app import auth, devices, realtime, storage_rooms
 from app.configuration import config
 from app.database import get_session
 from app.iot_gateway import iot_gateway
@@ -37,6 +37,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(storage_rooms.router)
 app.include_router(realtime.router)
+app.include_router(devices.router)
 
 
 @app.get("/api/health", tags=["System"])
