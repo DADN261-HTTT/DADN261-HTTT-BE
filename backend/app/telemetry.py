@@ -72,8 +72,6 @@ async def save_telemetry_point(
                 "gia_tri_thong_so": gia_tri_thong_so,
             },
         )
-        inserted = (res.rowcount or 0) > 0
-
         await session.execute(
             text("""
                     UPDATE ThietBiIot
@@ -83,6 +81,8 @@ async def save_telemetry_point(
                 """),
             {"t": thoi_gian_ghi, "id": ma_thiet_bi},
         )
+        inserted = (res.rowcount or 0) > 0
+
     if inserted:
         await event_bus.publish(
             "telemetry.created",
